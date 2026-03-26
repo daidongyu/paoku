@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>翠翠酷跑</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            touch-action: none;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #gameCanvas {
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 50%, #90EE90 50%, #228B22 100%);
+            box-shadow: 0 0 30px rgba(0,0,0,0.3);
+            border-radius: 10px;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        
+        #ui .score {
+            font-size: 32px;
+            color: #FFD700;
+        }
+        
+        #startScreen, #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            color: #fff;
+        }
+        
+        #startScreen h1, #gameOverScreen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        #startScreen p, #gameOverScreen p {
+            font-size: 18px;
+            margin: 10px 0;
+            text-align: center;
+            line-height: 1.8;
+        }
+        
+        .btn {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            border: none;
+            border-radius: 50px;
+            color: #333;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 30px;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+        }
+        
+        .btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6);
+        }
+        
+        .controls-hint {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            font-size: 14px;
+            text-align: center;
+            opacity: 0.8;
+        }
+        
+        .control-btn {
+            display: inline-block;
+            padding: 5px 10px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+            margin: 0 5px;
+        }
+        
+        #mobileControls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: none;
+            justify-content: space-around;
+            padding: 0 20px;
+            z-index: 15;
+        }
+        
+        .mobile-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            border: 3px solid rgba(255,255,255,0.5);
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            backdrop-filter: blur(5px);
+        }
+        
+        .mobile-btn:active {
+            background: rgba(255,255,255,0.5);
+            transform: scale(0.95);
+        }
+        
+        .mobile-btn span {
+            font-size: 24px;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            #mobileControls {
+                display: flex;
+            }
+            .controls-hint {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="ui">
+            <div>翠翠酷跑</div>
+            <div class="score">得分: <span id="score">0</span></div>
+            <div>速度: <span id="speed">1</span>x</div>
+        </div>
+        
+        <div id="startScreen">
+            <h1>🏃 翠翠酷跑 🏃</h1>
+            <p>帮助翠翠躲避路障，跑得越远越好！</p>
+            <p>路障：嘉姐 👩 | 万总 👨 | 二叔 🧔 | 二婶 👵 | 张表妹 👧</p>
+            <button class="btn" onclick="startGame()">开始游戏</button>
+            <div class="controls-hint" style="position: relative; margin-top: 30px;">
+                <p>PC端：<span class="control-btn">↑</span> 跳跃 <span class="control-btn">↓</span> 下蹲 <span class="control-btn">空格</span> 翻跟头</p>
+            </div>
+        </div>
+        
+        <div id="gameOverScreen" class="hidden">
+            <h1>游戏结束！</h1>
+            <p>最终得分: <span id="finalScore">0</span></p>
+            <p>最高记录: <span id="highScore">0</span></p>
+            <button class="btn" onclick="restartGame()">再来一次</button>
+        </div>
+        
+        <div id="mobileControls">
+            <div class="mobile-btn" id="jumpBtn">
+                <span>⬆️</span>
+                跳跃
+            </div>
+            <div class="mobile-btn" id="flipBtn">
+                <span>🤸</span>
+                翻跟头
+            </div>
+            <div class="mobile-btn" id="duckBtn">
+                <span>⬇️</span>
+                下蹲
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏配置
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 设置画布大小
+        function resizeCanvas() {
+            const maxWidth = Math.min(window.innerWidth - 20, 900);
+            const maxHeight = Math.min(window.innerHeight - 20, 500);
+            canvas.width = maxWidth;
+            canvas.height = maxHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // 游戏状态
+        let gameState = 'start'; // start, playing, gameover
+        let score = 0;
+        let highScore = localStorage.getItem('cuicuiHighScore') || 0;
+        let gameSpeed = 5;
+        let speedMultiplier = 1;
+        let frame = 0;
+        
+        // 翠翠图片
+        const cuiCuiImg = new Image();
+        cuiCuiImg.src = './cuicui.jpg';
+        
+        // 路障类型
+        const obstacleTypes = [
+            { name: '嘉姐', emoji: '👩', color: '#FF69B4', type: 'jump' },
+            { name: '万总', emoji: '👨', color: '#4169E1', type: 'duck' },
+            { name: '二叔', emoji: '🧔', color: '#8B4513', type: 'jump' },
+            { name: '二婶', emoji: '👵', color: '#9370DB', type: 'duck' },
+            { name: '张表妹', emoji: '👧', color: '#FF6347', type: 'flip' }
+        ];
+        
+        // 玩家对象
+        const player = {
+            x: 100,
+            y: 0,
+            width: 60,
+            height: 80,
+            velocityY: 0,
+            gravity: 0.8,
+            jumpPower: -15,
+            grounded: false,
+            ducking: false,
+            flipping: false,
+            flipAngle: 0,
+            originalHeight: 80,
+            duckHeight: 40,
+            runFrame: 0
+        };
+        
+        // 地面高度
+        let groundHeight = 80;
+        
+        // 路障数组
+        let obstacles = [];
+        
+        // 背景元素
+        let clouds = [];
+        let buildings = [];
+        
+        // 初始化背景
+        function initBackground() {
+            clouds = [];
+            for (let i = 0; i < 5; i++) {
+                clouds.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * (canvas.height / 2 - 50),
+                    size: 30 + Math.random() * 40,
+                    speed: 0.5 + Math.random() * 1
+                });
+            }
+            buildings = [];
+            for (let i = 0; i < 8; i++) {
+                buildings.push({
+                    x: i * 150,
+                    width: 80 + Math.random() * 60,
+                    height: 100 + Math.random() * 150,
+                    color: `hsl(${200 + Math.random() * 40}, 30%, ${40 + Math.random() * 20}%)`
+                });
+            }
+        }
+        
+        // 初始化玩家位置
+        function initPlayer() {
+            player.y = canvas.height - groundHeight - player.height;
+            player.velocityY = 0;
+            player.grounded = true;
+            player.ducking = false;
+            player.flipping = false;
+            player.flipAngle = 0;
+            player.height = player.originalHeight;
+        }
+        
+        // 跳跃
+        function jump() {
+            if (player.grounded && !player.ducking && !player.flipping) {
+                player.velocityY = player.jumpPower;
+                player.grounded = false;
+                createParticles(player.x + player.width/2, player.y + player.height, '#FFD700', 5);
+            }
+        }
+        
+        // 下蹲
+        function duck(start) {
+            if (start && player.grounded && !player.flipping) {
+                player.ducking = true;
+                player.height = player.duckHeight;
+                player.y = canvas.height - groundHeight - player.height;
+            } else if (!start) {
+                player.ducking = false;
+                player.height = player.originalHeight;
+                player.y = canvas.height - groundHeight - player.height;
+            }
+        }
+        
+        // 翻跟头
+        function flip() {
+            if (player.grounded && !player.ducking && !player.flipping) {
+                player.flipping = true;
+                player.velocityY = player.jumpPower * 0.8;
+                player.grounded = false;
+            }
+        }
+        
+        // 粒子效果
+        let particles = [];
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 5,
+                    vy: (Math.random() - 0.5) * 5,
+                    life: 30,
+                    color: color,
+                    size: 3 + Math.random() * 5
+                });
+            }
+        }
+        
+        // 生成路障
+        function spawnObstacle() {
+            if (frame % Math.floor(120 / speedMultiplier) === 0) {
+                const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+                const obstacle = {
+                    x: canvas.width,
+                    y: canvas.height - groundHeight - 60,
+                    width: 50,
+                    height: 60,
+                    type: type,
+                    passed: false
+                };
+                obstacles.push(obstacle);
+            }
+        }
+        
+        // 更新游戏
+        function update() {
+            if (gameState !== 'playing') return;
+            
+            frame++;
+            
+            // 增加速度和分数
+            if (frame % 600 === 0) {
+                speedMultiplier += 0.1;
+                gameSpeed = 5 * speedMultiplier;
+                document.getElementById('speed').textContent = speedMultiplier.toFixed(1);
+            }
+            
+            score += Math.floor(speedMultiplier);
+            document.getElementById('score').textContent = score;
+            
+            // 更新玩家
+            player.velocityY += player.gravity;
+            player.y += player.velocityY;
+            
+            // 地面碰撞
+            if (player.y + player.height >= canvas.height - groundHeight) {
+                player.y = canvas.height - groundHeight - player.height;
+                player.velocityY = 0;
+                player.grounded = true;
+                player.flipping = false;
+                player.flipAngle = 0;
+            }
+            
+            // 翻跟头动画
+            if (player.flipping) {
+                player.flipAngle += 20;
+            }
+            
+            // 跑步动画帧
+            if (player.grounded && !player.ducking && !player.flipping) {
+                player.runFrame = Math.floor(frame / 5) % 4;
+            }
+            
+            // 更新云朵
+            clouds.forEach(cloud => {
+                cloud.x -= cloud.speed;
+                if (cloud.x + cloud.size < 0) {
+                    cloud.x = canvas.width + cloud.size;
+                    cloud.y = Math.random() * (canvas.height / 2 - 50);
+                }
+            });
+            
+            // 更新建筑物
+            buildings.forEach(building => {
+                building.x -= gameSpeed * 0.3;
+                if (building.x + building.width < 0) {
+                    building.x = canvas.width + Math.random() * 100;
+                    building.height = 100 + Math.random() * 150;
+                }
+            });
+            
+            // 更新路障
+            spawnObstacle();
+            obstacles.forEach((obs, index) => {
+                obs.x -= gameSpeed;
+                
+                // 检测碰撞
+                const hitboxPadding = 10;
+                if (!obs.passed &&
+                    player.x + hitboxPadding < obs.x + obs.width - hitboxPadding &&
+                    player.x + player.width - hitboxPadding > obs.x + hitboxPadding &&
+                    player.y + hitboxPadding < obs.y + obs.height - hitboxPadding &&
+                    player.y + player.height - hitboxPadding > obs.y + hitboxPadding) {
+                    
+                    // 特殊路障需要特定动作躲避
+                    if (obs.type.type === 'flip' && player.flipping) {
+                        // 成功翻跟头躲避
+                        obs.passed = true;
+                        score += 50;
+                        createParticles(obs.x, obs.y, '#00FF00', 10);
+                    } else if (obs.type.type === 'duck' && player.ducking) {
+                        // 成功下蹲躲避
+                        obs.passed = true;
+                        score += 30;
+                        createParticles(obs.x, obs.y, '#00FF00', 10);
+                    } else if (obs.type.type === 'jump' && !player.grounded) {
+                        // 成功跳跃躲避
+                        obs.passed = true;
+                        score += 30;
+                        createParticles(obs.x, obs.y, '#00FF00', 10);
+                    } else {
+                        // 碰撞失败
+                        gameOver();
+                    }
+                }
+                
+                // 成功通过路障加分
+                if (!obs.passed && obs.x + obs.width < player.x) {
+                    obs.passed = true;
+                    score += 10;
+                }
+            });
+            
+            // 移除屏幕外的路障
+            obstacles = obstacles.filter(obs => obs.x + obs.width > -50);
+            
+            // 更新粒子
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                p.size *= 0.95;
+            });
+            particles = particles.filter(p => p.life > 0);
+        }
+        
+        // 绘制游戏
+        function draw() {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制天空渐变
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(0.5, '#E0F6FF');
+            gradient.addColorStop(0.5, '#90EE90');
+            gradient.addColorStop(1, '#228B22');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制太阳
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(canvas.width - 80, 60, 40, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+            ctx.beginPath();
+            ctx.arc(canvas.width - 80, 60, 55, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 绘制云朵
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            clouds.forEach(cloud => {
+                ctx.beginPath();
+                ctx.arc(cloud.x, cloud.y, cloud.size, 0, Math.PI * 2);
+                ctx.arc(cloud.x + cloud.size * 0.5, cloud.y - cloud.size * 0.3, cloud.size * 0.8, 0, Math.PI * 2);
+                ctx.arc(cloud.x - cloud.size * 0.5, cloud.y - cloud.size * 0.2, cloud.size * 0.7, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            // 绘制建筑物（远景）
+            buildings.forEach(building => {
+                ctx.fillStyle = building.color;
+                ctx.fillRect(building.x, canvas.height - groundHeight - building.height, building.width, building.height);
+                // 窗户
+                ctx.fillStyle = 'rgba(255, 255, 200, 0.3)';
+                for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < Math.floor(building.height / 30); j++) {
+                        if (Math.random() > 0.5) {
+                            ctx.fillRect(building.x + 10 + i * 20, canvas.height - groundHeight - building.height + 10 + j * 25, 10, 15);
+                        }
+                    }
+                }
+            });
+            
+            // 绘制地面
+            ctx.fillStyle = '#228B22';
+            ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+            // 地面纹理
+            ctx.fillStyle = '#1C6B1C';
+            for (let i = 0; i < canvas.width; i += 30) {
+                const offset = (i - frame * gameSpeed) % 30;
+                ctx.fillRect(i - offset, canvas.height - groundHeight, 2, groundHeight);
+            }
+            
+            // 绘制玩家
+            ctx.save();
+            ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+            
+            if (player.flipping) {
+                ctx.rotate(player.flipAngle * Math.PI / 180);
+            }
+            
+            // 绘制身体
+            if (player.ducking) {
+                // 下蹲姿势
+                ctx.fillStyle = '#FF6B6B';
+                ctx.fillRect(-25, -10, 50, 30);
+                // 腿
+                ctx.fillStyle = '#333';
+                ctx.fillRect(-20, 10, 15, 10);
+                ctx.fillRect(5, 10, 15, 10);
+            } else {
+                // 正常跑步姿势
+                ctx.fillStyle = '#FF6B6B';
+                ctx.fillRect(-25, -30, 50, 50);
+                
+                // 腿动画
+                ctx.fillStyle = '#333';
+                const legOffset = player.grounded ? Math.sin(frame * 0.3) * 10 : 0;
+                ctx.fillRect(-15 + legOffset, 15, 12, 20);
+                ctx.fillRect(3 - legOffset, 15, 12, 20);
+                
+                // 手臂
+                ctx.fillStyle = '#FF9999';
+                const armOffset = player.grounded ? Math.cos(frame * 0.3) * 10 : 0;
+                ctx.fillRect(-30, -20 + armOffset, 8, 25);
+                ctx.fillRect(22, -20 - armOffset, 8, 25);
+            }
+            
+            // 绘制翠翠的头像（圆形裁剪）
+            if (cuiCuiImg.complete) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(0, player.ducking ? -20 : -40, 25, 0, Math.PI * 2);
+                ctx.clip();
+                ctx.drawImage(cuiCuiImg, -25, player.ducking ? -45 : -65, 50, 50);
+                ctx.restore();
+                
+                // 头像边框
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(0, player.ducking ? -20 : -40, 25, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+            
+            // 绘制路障
+            obstacles.forEach(obs => {
+                // 路障背景
+                ctx.fillStyle = obs.type.color;
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                
+                // 路障表情/图标
+                ctx.font = '30px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(obs.type.emoji, obs.x + obs.width / 2, obs.y + obs.height / 2);
+                
+                // 路障边框
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+                
+                // 路障标签
+                ctx.fillStyle = '#333';
+                ctx.font = '12px Arial';
+                ctx.fillText(obs.type.name, obs.x + obs.width / 2, obs.y - 10);
+            });
+            
+            // 绘制粒子
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / 30;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+        }
+        
+        // 游戏循环
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 开始游戏
+        function startGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            gameState = 'playing';
+            score = 0;
+            speedMultiplier = 1;
+            gameSpeed = 5;
+            obstacles = [];
+            particles = [];
+            frame = 0;
+            initPlayer();
+            initBackground();
+            document.getElementById('score').textContent = score;
+            document.getElementById('speed').textContent = speedMultiplier.toFixed(1);
+        }
+        
+        // 游戏结束
+        function gameOver() {
+            gameState = 'gameover';
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('cuicuiHighScore', highScore);
+            }
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('highScore').textContent = highScore;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }
+        
+        // 重新开始
+        function restartGame() {
+            startGame();
+        }
+        
+        // 键盘控制
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            
+            if (gameState === 'playing') {
+                if (e.key === 'ArrowUp' || e.key === ' ' || e.key === 'w') {
+                    e.preventDefault();
+                    jump();
+                }
+                if (e.key === 'ArrowDown' || e.key === 's') {
+                    e.preventDefault();
+                    duck(true);
+                }
+                if (e.key === ' ') {
+                    e.preventDefault();
+                    flip();
+                }
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+            
+            if (e.key === 'ArrowDown' || e.key === 's') {
+                duck(false);
+            }
+        });
+        
+        // 移动端控制
+        const jumpBtn = document.getElementById('jumpBtn');
+        const duckBtn = document.getElementById('duckBtn');
+        const flipBtn = document.getElementById('flipBtn');
+        
+        jumpBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameState === 'playing') jump();
+        });
+        
+        duckBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameState === 'playing') duck(true);
+        });
+        
+        duckBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (gameState === 'playing') duck(false);
+        });
+        
+        flipBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameState === 'playing') flip();
+        });
+        
+        // 鼠标控制（PC端也可以用按钮）
+        jumpBtn.addEventListener('mousedown', () => {
+            if (gameState === 'playing') jump();
+        });
+        
+        duckBtn.addEventListener('mousedown', () => {
+            if (gameState === 'playing') duck(true);
+        });
+        
+        duckBtn.addEventListener('mouseup', () => {
+            if (gameState === 'playing') duck(false);
+        });
+        
+        flipBtn.addEventListener('mousedown', () => {
+            if (gameState === 'playing') flip();
+        });
+        
+        // 点击/触摸开始游戏
+        document.getElementById('gameCanvas').addEventListener('click', () => {
+            if (gameState === 'start') {
+                startGame();
+            }
+        });
+        
+        // 启动游戏循环
+        initBackground();
+        initPlayer();
+        gameLoop();
+    </script>
+</body>
+</html>
